@@ -108,7 +108,7 @@ func main() {
 				return
 			}
 		}
-			
+
 		if userID == nil {
 			c.JSON(http.StatusOK, items)
 			return
@@ -151,6 +151,8 @@ func main() {
 	router.GET("/boost-topics", auth.GetTopTopicsHandler)
 	router.GET("/user-topics", auth.RequireLogin(), auth.GetUserTopics)
 	router.POST("/onboarding", auth.OnboardingHandler)
+
+	
 
 
 

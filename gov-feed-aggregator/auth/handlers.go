@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"unicode"
+	// "time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -427,3 +428,4 @@ func OnboardingHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Preferences saved"})
 }
+

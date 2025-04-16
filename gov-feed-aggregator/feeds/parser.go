@@ -147,14 +147,19 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 	resultChan := make(chan ScoredItem, 1000)
 	fp := gofeed.NewParser()
 
-	// Expand search terms with Datamuse API
-	expandedTerms := []string{strings.ToLower(query)}
-	if synonyms, err := fetchRelatedTerms(query); err == nil {
-		for _, word := range synonyms {
-			expandedTerms = append(expandedTerms, strings.ToLower(word))
+	// Support comma-separated terms
+	rawTerms := strings.Split(query, ",")
+	var expandedTerms []string
+	for _, term := range rawTerms {
+		term = strings.TrimSpace(term)
+		if term != "" {
+			expandedTerms = append(expandedTerms, strings.ToLower(term))
 		}
-	} else {
-		fmt.Printf("⚠️ Failed to fetch related terms: %v\n", err)
+	}
+
+	if len(expandedTerms) == 0 {
+		fmt.Println("⚠️ No search terms provided")
+		return nil, nil
 	}
 
 	seen := make(map[string]bool)
@@ -200,10 +205,10 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 				score := 0
 				for _, term := range expandedTerms {
 					if strings.Contains(title, term) {
-						score += 5
+						score += 5 // Title match = strong
 					}
 					if searchDescriptions && (strings.Contains(desc, term) || strings.Contains(content, term)) {
-						score += 3
+						score += 2 // Content match = weaker
 					}
 				}
 				if score == 0 {
@@ -254,7 +259,6 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 		scoredItems = append(scoredItems, result)
 	}
 
-	// Sort by descending score
 	sort.Slice(scoredItems, func(i, j int) bool {
 		return scoredItems[i].Score > scoredItems[j].Score
 	})
@@ -269,6 +273,7 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 
 	return results, nil
 }
+
 
 /* ───────────────── CLASSIFIER ─────────────────────────────── */
 

@@ -1,6 +1,9 @@
 // src/Feed.jsx
 import { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
+import LoadingBadge from './LoadingBadge';
+import './App.css';
+
 
 function extractImageSrc(html) {
   const match = html.match(/<img.*?src=['"](.*?)['"]/);
@@ -66,7 +69,11 @@ export default function Feed() {
   const fetchSavedItems = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/feed?filter=save', { credentials: 'include' });
+      const url = new URL('http://localhost:8080/feed');
+      url.searchParams.set('query', ''); // or "all"
+      url.searchParams.set('filter', 'save');
+  
+      const res = await fetch(url.toString(), { credentials: 'include' });
       const data = await res.json();
       setSavedItems(Array.isArray(data) ? data : []);
       setHasLoadedSaved(true);
@@ -76,7 +83,7 @@ export default function Feed() {
       setIsLoading(false);
     }
   };
-
+  
   const handleSearch = async (customQuery = "", filterOverride = null) => {
     if (isLoading) return;
     const actualQuery = customQuery || query;
@@ -107,7 +114,7 @@ export default function Feed() {
           return bScore - aScore;
         });
       }
-  
+        
       setFeedItems(items);
       setLastQuery(actualQuery);
       setQuery(actualQuery);
@@ -243,7 +250,7 @@ export default function Feed() {
   Feed
 </button>
 
-<button
+{/* <button
   onClick={() => {
     setActiveTab('saved');
     if (!hasLoadedSaved) fetchSavedItems();
@@ -274,7 +281,8 @@ export default function Feed() {
   }}
 >
   Saved
-</button>
+</button> */}
+
         </div>
 
         {activeTab === 'feed' && (
@@ -368,24 +376,36 @@ export default function Feed() {
             }}
         />
         <button
-            onClick={() => handleSearch()}
-            disabled={isLoading}
-            style={{
-            backgroundColor: '#2563eb',
+        onClick={() => handleSearch()}
+        disabled={isLoading}
+        style={{
+            backgroundColor: '#1a1a1a',
             color: 'white',
             padding: '8px 16px',
-            border: 'none',
+            border: '1px solid #2563eb',
             borderRadius: '8px',
             fontSize: '0.95rem',
-            cursor: 'pointer'
-            }}
+            cursor: 'pointer',
+            transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+        }}
+        onMouseEnter={(e) => {
+            e.target.style.borderColor = '#22c55e'; // neon green
+            e.target.style.boxShadow = '0 0 0 2px rgba(34, 197, 94, 0.5)';
+        }}
+        onMouseLeave={(e) => {
+            e.target.style.borderColor = '#2563eb';
+            e.target.style.boxShadow = 'none';
+        }}
         >
-            Search
+        Search
         </button>
         </div>
 
-      <div>
-      {filteredFeedItems.slice(0, visibleCount).map((item, idx) => {
+        <div>
+        {isLoading ? (
+            <LoadingBadge />
+        ) : (
+        filteredFeedItems.slice(0, visibleCount).map((item, idx) => {        
         const imgSrc = extractImageSrc(item.description);
         // Determine if the article is boosted by checking if the title includes any boosted topic.
         const isBoosted = boostedTopics.some(topic =>
@@ -444,7 +464,8 @@ export default function Feed() {
             </div>
             </div>
         );
-        })}
+        })
+    )}
 
 
         {!isLoading && hasSearched && query === lastQuery && filteredFeedItems.length === 0 && (
