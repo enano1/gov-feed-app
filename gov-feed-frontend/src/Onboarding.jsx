@@ -1,9 +1,9 @@
+// src/Onboarding.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Onboarding() {
   const [topics, setTopics] = useState([]);
-  const [orgUrl, setOrgUrl] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
@@ -11,36 +11,48 @@ export default function Onboarding() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ topics, org_url: orgUrl }),
+      body: JSON.stringify({ topics }),
     });
-
-    navigate('/feed'); // 🎯 move to feed
+    navigate('/feed'); // Proceed to feed after onboarding
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.box}>
-        <h1 style={styles.title}>What topics are you interested in?</h1>
+    <div style={containerStyle}>
+      <div style={boxStyle}>
+        <h1 style={titleStyle}>What topics are you interested in?</h1>
 
-        <input
-          type="text"
-          placeholder="e.g. Cybersecurity, AI"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setTopics(prev => [...prev, e.target.value]);
-              e.target.value = '';
-            }
-          }}
-          style={styles.input}
-        />
-
-        <ul style={styles.list}>
+        <div style={inputContainerStyle}>
           {topics.map((t, i) => (
-            <li key={i} style={styles.listItem}>{t}</li>
+            <div key={i} style={chipStyle}>
+              {t}
+              <button
+                onClick={() => setTopics(prev => prev.filter((_, index) => index !== i))}
+                style={chipButtonStyle}
+                aria-label={`Remove ${t}`}
+              >
+                ×
+              </button>
+            </div>
           ))}
-        </ul>
 
-        <button onClick={handleSubmit} style={styles.button}>
+          <input
+            type="text"
+            placeholder={topics.length === 0 ? "e.g. Cybersecurity, AI" : ""}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const value = e.target.value.trim();
+                if (value !== '') {
+                  setTopics(prev => [...prev, value]);
+                  e.target.value = '';
+                }
+              }
+            }}
+            style={inputStyle}
+          />
+          <span style={arrowStyle}>↵</span>
+        </div>
+
+        <button onClick={handleSubmit} style={buttonStyle}>
           Finish Setup →
         </button>
       </div>
@@ -48,55 +60,95 @@ export default function Onboarding() {
   );
 }
 
-const styles = {
-  container: {
-    width: '100vw',
-    height: '100vh',
-    backgroundColor: '#111',
-    color: 'white',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  box: {
-    textAlign: 'center',
-    padding: '2rem',
-    maxWidth: '500px',
-    width: '100%',
-  },
-  title: {
-    fontSize: '2rem',
-    marginBottom: '1.5rem',
-  },
-  input: {
-    width: '100%',
-    padding: '0.8rem',
-    borderRadius: '8px',
-    border: 'none',
-    marginTop: '1rem',
-    fontSize: '1rem',
-    backgroundColor: '#222',
-    color: 'white',
-  },
-  list: {
-    listStyle: 'none',
-    padding: 0,
-    marginTop: '1rem',
-  },
-  listItem: {
-    backgroundColor: '#222',
-    marginBottom: '0.5rem',
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-  },
-  button: {
-    marginTop: '2rem',
-    padding: '12px 24px',
-    fontSize: '1rem',
-    borderRadius: '9999px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    cursor: 'pointer',
-  }
+// Styles
+const containerStyle = {
+  width: '100vw',
+  height: '100vh',
+  backgroundColor: '#111',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+};
+
+const boxStyle = {
+  textAlign: 'center',
+  padding: '2rem',
+  maxWidth: '500px',
+  width: '100%',
+//   backgroundColor: '#222',
+  borderRadius: '4px',
+};
+
+const titleStyle = {
+  fontSize: '2rem',
+  marginBottom: '1.5rem',
+  color: 'white'
+};
+
+const inputContainerStyle = {
+  position: 'relative',
+  width: '100%',
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  backgroundColor: '#1a1a1a',
+  border: '1px solid #444',
+  borderRadius: '4px',
+  padding: '4px',
+  minHeight: '32px',
+};
+
+const chipStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  backgroundColor: '#444',
+  color: 'white',
+  padding: '3px 8px',
+  borderRadius: '4px',
+  fontSize: '0.8rem',
+  marginRight: '6px',
+  marginBottom: '4px'
+};
+
+const chipButtonStyle = {
+  marginLeft: '6px',
+  background: 'transparent',
+  border: 'none',
+  color: 'white',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  fontSize: '1rem',
+  padding: 0,
+};
+
+const inputStyle = {
+  flex: 1,
+  minWidth: '120px',
+  border: 'none',
+  outline: 'none',
+  fontSize: '1rem',
+  color: '#fff',
+  backgroundColor: 'transparent',
+  padding: '6px 0',
+};
+
+const arrowStyle = {
+  position: 'absolute',
+  right: '12px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: '#aaa',
+  fontSize: '1rem',
+  pointerEvents: 'none',
+};
+
+const buttonStyle = {
+  marginTop: '2rem',
+  padding: '12px 24px',
+  fontSize: '1rem',
+  borderRadius: '9999px', // Very round
+  backgroundColor: '#6c5ce7', // Purple button
+  color: 'white',
+  border: 'none',
+  cursor: 'pointer',
 };

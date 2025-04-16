@@ -165,7 +165,9 @@ export default function Feed() {
   width: '100vw',
   overflowX: 'hidden',
   boxSizing: 'border-box',
-  padding: '20px 40px',
+  paddingTop: 50,
+  paddingLeft: 500,
+  paddingRight: 500,
   backgroundColor: '#111',
   color: '#fff',
   fontFamily: 'Inter, sans-serif'
@@ -252,44 +254,67 @@ export default function Feed() {
         </div>
 
       <div>
-        {filteredFeedItems.slice(0, visibleCount).map((item, idx) => {
-          const imgSrc = extractImageSrc(item.description);
-          return (
+      {filteredFeedItems.slice(0, visibleCount).map((item, idx) => {
+        const imgSrc = extractImageSrc(item.description);
+        // Determine if the article is boosted by checking if the title includes any boosted topic.
+        const isBoosted = boostedTopics.some(topic =>
+            item.title.toLowerCase().includes(topic)
+        );
+
+        const fullText = DOMPurify.sanitize(item.description, { ALLOWED_TAGS: [] });
+        const excerpt = fullText.length > 150
+          ? fullText.slice(0, 150) + '…'
+          : fullText;
+
+        return (
             <div key={idx} style={{ backgroundColor: '#1a1a1a', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: '1px solid #333' }}>
-              <div style={{ marginBottom: 10, fontSize: '0.85rem', color: '#888' }}>
+            {imgSrc && (
+                <img
+                src={imgSrc}
+                alt=""
+                style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '12px 12px 0 0' }}
+                />
+            )}
+            <div style={{ marginBottom: 10, fontSize: '0.85rem', color: '#888', display: 'flex', alignItems: 'center' }}>
                 <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
-                  {item.category.toUpperCase()}
+                {item.category.toUpperCase()}
                 </span>
-              </div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: 8 }}>{item.title}</h3>
-              <p style={{ color: '#bbb' }}>{DOMPurify.sanitize(item.description, { ALLOWED_TAGS: [] })}</p>
-              <p style={{ fontSize: '0.8rem', color: '#666', marginTop: 6 }}>
+                {isBoosted && (
+                <span style={{ marginLeft: '8px', fontSize: '0.75rem' }}>
+                    ✨ Boosted
+                </span>
+                )}
+            </div>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: 8 }}>{item.title}</h3>
+            <p style={{ color: '#bbb' }}>{excerpt}</p>
+            <p style={{ fontSize: '0.8rem', color: '#666', marginTop: 6 }}>
                 {new Date(item.published).toLocaleDateString()}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
                 <a href={item.link} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontSize: '0.9rem' }}>Read more →</a>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {['like', 'dislike', 'save', 'hide'].map(action => (
+                {['like', 'dislike', 'save', 'hide'].map(action => (
                     <button key={action} onClick={() => submitFeedback(item.link, action)} style={{
-                      backgroundColor: feedback[item.link] === action ? '#2563eb' : '#222',
-                      color: '#fff',
-                      border: '1px solid #333',
-                      padding: '4px 8px',
-                      borderRadius: '9999px',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer'
+                    backgroundColor: feedback[item.link] === action ? '#2563eb' : '#222',
+                    color: '#fff',
+                    border: '1px solid #333',
+                    padding: '4px 8px',
+                    borderRadius: '9999px',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
                     }}>
-                      {action === 'like' && '❤️'}
-                      {action === 'dislike' && '👎'}
-                      {action === 'save' && '🔖'}
-                      {action === 'hide' && '🚫'}
+                    {action === 'like' && '❤️'}
+                    {action === 'dislike' && '👎'}
+                    {action === 'save' && '🔖'}
+                    {action === 'hide' && '🚫'}
                     </button>
-                  ))}
+                ))}
                 </div>
-              </div>
             </div>
-          );
+            </div>
+        );
         })}
+
 
         {!isLoading && hasSearched && query === lastQuery && filteredFeedItems.length === 0 && (
           <p style={{ fontStyle: 'italic', color: '#555', marginTop: 20 }}>No results found for "{query}". Try a different topic below.</p>

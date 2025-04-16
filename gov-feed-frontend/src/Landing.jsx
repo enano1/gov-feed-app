@@ -16,7 +16,8 @@ export default function Landing() {
       justifyContent: 'center',
       alignItems: 'center',
       textAlign: 'center',
-      padding: '2rem'
+    //   padding: '2rem',
+      overflow: 'hidden'
     }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
         Stay ahead in defense + gov tech.
