@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
 import LoadingBadge from './LoadingBadge';
 import './App.css';
+import SummaryModal from './SummaryModal';
 
 
 function extractImageSrc(html) {
@@ -24,6 +25,12 @@ export default function Feed() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [hasLoadedSaved, setHasLoadedSaved] = useState(false);
   const [boostedTopics, setBoostedTopics] = useState([]);
+
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [currentSummary, setCurrentSummary] = useState('');
+  const [summaryCache, setSummaryCache] = useState({});
+
+  
 
   useEffect(() => {
     fetch('http://localhost:8080/me', { credentials: 'include' })
@@ -108,11 +115,34 @@ export default function Feed() {
   
       // ✨ Step 3: Boost relevance using boostedTopics
       if (boostedTopics.length > 0) {
-        items.sort((a, b) => {
-          const aScore = boostedTopics.some(topic => a.title.toLowerCase().includes(topic)) ? 1 : 0;
-          const bScore = boostedTopics.some(topic => b.title.toLowerCase().includes(topic)) ? 1 : 0;
-          return bScore - aScore;
-        });
+        const boosted = [];
+        const regular = [];
+      
+        for (const item of items) {
+          const isBoosted = boostedTopics.some(topic =>
+            item.title.toLowerCase().includes(topic)
+          );
+          if (isBoosted) {
+            boosted.push(item);
+          } else {
+            regular.push(item);
+          }
+        }
+      
+        // Interleave: one boosted item every 5 regular items
+        const interleaved = [];
+        let r = 0, b = 0;
+      
+        while (r < regular.length || b < boosted.length) {
+          for (let i = 0; i < 5 && r < regular.length; i++) {
+            interleaved.push(regular[r++]);
+          }
+          if (b < boosted.length) {
+            interleaved.push(boosted[b++]);
+          }
+        }
+      
+        items = interleaved;
       }
         
       setFeedItems(items);
@@ -163,6 +193,35 @@ export default function Feed() {
       console.error("Failed to submit feedback:", err);
     }
   };
+
+  const handleTldrClick = async (article) => {
+    if (summaryCache[article.link]) {
+      setCurrentSummary(summaryCache[article.link]);
+      setSummaryModalOpen(true);
+      return;
+    }
+  
+    setCurrentSummary("⏳ Summarizing...");
+  
+    setSummaryModalOpen(true);
+    try {
+      const res = await fetch('http://localhost:8080/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: article.description, title: article.title })
+      });
+  
+      const data = await res.json();
+      const summary = data.summary || "No summary available.";
+  
+      setSummaryCache(prev => ({ ...prev, [article.link]: summary }));
+      setCurrentSummary(summary);
+    } catch (err) {
+      setCurrentSummary("⚠️ Failed to summarize this article.");
+    }
+  };
+  
 
   const fallbackSuggestions = ["Artificial Intelligence", "Defense", "Cybersecurity", "China", "Pentagon"];
   const feedToShow = activeTab === 'saved' ? savedItems : feedItems;
@@ -375,6 +434,7 @@ export default function Feed() {
             fontSize: '1rem'
             }}
         />
+        
         <button
         onClick={() => handleSearch()}
         disabled={isLoading}
@@ -443,6 +503,22 @@ export default function Feed() {
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
                 <a href={item.link} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontSize: '0.9rem' }}>Read more →</a>
+                <button
+                onClick={() => handleTldrClick(item)}
+                style={{
+                    backgroundColor: '#222',
+                    color: '#fff',
+                    border: '1px solid #444',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.85rem',
+                    marginLeft: '8px',
+                    cursor: 'pointer',
+                }}
+                >
+                TL;DR
+                </button>
+
                 <div style={{ display: 'flex', gap: '8px' }}>
                 {['like', 'dislike', 'save', 'hide'].map(action => (
                     <button key={action} onClick={() => submitFeedback(item.link, action)} style={{
@@ -507,6 +583,12 @@ export default function Feed() {
             {tag}
             </button>
           ))}
+          <SummaryModal
+            isOpen={summaryModalOpen}
+            onClose={() => setSummaryModalOpen(false)}
+            content={currentSummary}
+            />
+
         </div>
       </div>
     </div>
