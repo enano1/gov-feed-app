@@ -55,8 +55,13 @@ func main() {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 	
-		// Handle "Saved" Tab: fetch saved articles from DB regardless of query
-		if filter == "save" && userID != nil {
+		// ✅ Handle "Saved" Tab First
+		if filter == "save" {
+			if userID == nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
+				return
+			}
+	
 			rows, err := auth.DB.Query(`SELECT article_id FROM feedback WHERE user_id = $1 AND action = 'save'`, userID)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve saved articles"})
@@ -71,7 +76,7 @@ func main() {
 				savedLinks[articleID] = true
 			}
 	
-			allItems, err := feeds.DeepSearch("")
+			allItems, err := feeds.DeepSearch("") // 👈 grabs everything
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -88,7 +93,7 @@ func main() {
 			return
 		}
 	
-		// Default behavior: search
+		// 🔒 Fallback for general feed requests
 		if query == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter is required"})
 			return
@@ -153,8 +158,6 @@ func main() {
 	router.POST("/onboarding", auth.OnboardingHandler)
 	router.POST("/summarize", auth.SummarizeHandler)
 
-
-	
 
 
 

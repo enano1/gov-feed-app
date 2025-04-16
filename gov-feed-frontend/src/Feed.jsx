@@ -26,6 +26,8 @@ export default function Feed() {
   const [hasLoadedSaved, setHasLoadedSaved] = useState(false);
   const [boostedTopics, setBoostedTopics] = useState([]);
 
+  const [currentArticleLink, setCurrentArticleLink] = useState(null);
+
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [currentSummary, setCurrentSummary] = useState('');
   const [summaryCache, setSummaryCache] = useState({});
@@ -90,7 +92,7 @@ export default function Feed() {
       setIsLoading(false);
     }
   };
-  
+    
   const handleSearch = async (customQuery = "", filterOverride = null) => {
     if (isLoading) return;
     const actualQuery = customQuery || query;
@@ -195,25 +197,30 @@ export default function Feed() {
   };
 
   const handleTldrClick = async (article) => {
+    setCurrentArticleLink(article.link); // 🆕 track the current article
+    setSummaryModalOpen(true);
+  
     if (summaryCache[article.link]) {
       setCurrentSummary(summaryCache[article.link]);
-      setSummaryModalOpen(true);
       return;
     }
   
     setCurrentSummary("⏳ Summarizing...");
   
-    setSummaryModalOpen(true);
     try {
       const res = await fetch('http://localhost:8080/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ content: article.description, title: article.title })
+        body: JSON.stringify({
+          title: article.title,
+          content: article.description,
+          link: article.link, // make sure you're sending the link
+        }),
       });
   
       const data = await res.json();
-      const summary = data.summary || "No summary available.";
+      const summary = data.summary || "Rate limit exceeded, 3 per minute :D.";
   
       setSummaryCache(prev => ({ ...prev, [article.link]: summary }));
       setCurrentSummary(summary);
@@ -221,7 +228,7 @@ export default function Feed() {
       setCurrentSummary("⚠️ Failed to summarize this article.");
     }
   };
-  
+    
 
   const fallbackSuggestions = ["Artificial Intelligence", "Defense", "Cybersecurity", "China", "Pentagon"];
   const feedToShow = activeTab === 'saved' ? savedItems : feedItems;
@@ -309,7 +316,7 @@ export default function Feed() {
   Feed
 </button>
 
-{/* <button
+<button
   onClick={() => {
     setActiveTab('saved');
     if (!hasLoadedSaved) fetchSavedItems();
@@ -340,7 +347,7 @@ export default function Feed() {
   }}
 >
   Saved
-</button> */}
+</button>
 
         </div>
 

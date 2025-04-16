@@ -2,10 +2,12 @@ package auth
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,7 @@ import (
 type SummarizeRequest struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Link    string `json:"link"` // Add this so we can uniquely identify the article
 }
 
 type Message struct {
@@ -35,8 +38,20 @@ type OpenAIResponse struct {
 
 func SummarizeHandler(c *gin.Context) {
 	session := sessions.Default(c)
-	if session.Get("user_id") == nil {
+	userID := session.Get("user_id")
+	if userID == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
+		return
+	}
+
+	uid, ok := userID.(int)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Session ID invalid"})
+		return
+	}
+
+	if !AllowRequest(uid) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded. Try again later."})
 		return
 	}
 
@@ -46,6 +61,18 @@ func SummarizeHandler(c *gin.Context) {
 		return
 	}
 
+	// 1. Check if summary exists in DB
+	var cached string
+	err := DB.QueryRow(`SELECT summary FROM summaries WHERE article_link = $1`, req.Link).Scan(&cached)
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{"summary": cached})
+		return
+	} else if err != sql.ErrNoRows {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB error"})
+		return
+	}
+
+	// 2. Create prompt
 	prompt := "Summarize the following article titled \"" + req.Title + "\" in 3 bullet points:\n\n" + req.Content
 
 	openAIReq := OpenAIRequest{
@@ -80,5 +107,13 @@ func SummarizeHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"summary": aiResp.Choices[0].Message.Content})
+	summary := aiResp.Choices[0].Message.Content
+
+	// 3. Save to DB
+	_, _ = DB.Exec(`INSERT INTO summaries (article_link, summary, created_at)
+					VALUES ($1, $2, $3)
+					ON CONFLICT (article_link) DO NOTHING`,
+		req.Link, summary, time.Now())
+
+	c.JSON(http.StatusOK, gin.H{"summary": summary})
 }

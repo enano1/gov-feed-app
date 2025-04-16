@@ -139,6 +139,11 @@ func fetchRelatedTerms(query string) ([]string, error) {
 }
 
 func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, error) {
+	if strings.TrimSpace(query) == "" {
+		// Special case: allow "empty query" to fetch everything
+		return fetchEverythingFromSources()
+	}
+
 	var wg sync.WaitGroup
 	type ScoredItem struct {
 		Item  FeedItem
@@ -272,6 +277,56 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 		searchDescriptions, len(sources), len(results), time.Since(start))
 
 	return results, nil
+}
+
+
+func fetchEverythingFromSources() ([]FeedItem, error) {
+	var wg sync.WaitGroup
+	fp := gofeed.NewParser()
+	resultChan := make(chan FeedItem, 1000)
+
+	for _, url := range sources {
+		wg.Add(1)
+		go func(feedURL string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("⚠️ Panic recovered in %s: %v\n", feedURL, r)
+				}
+			}()
+
+			feed, err := fp.ParseURL(feedURL)
+			if err != nil {
+				fmt.Printf("❌ Failed to fetch %s\n", feedURL)
+				return
+			}
+
+			for _, item := range feed.Items {
+				var published time.Time
+				if item.PublishedParsed != nil {
+					published = *item.PublishedParsed
+				}
+				resultChan <- FeedItem{
+					Title:       item.Title,
+					Link:        item.Link,
+					Description: item.Description,
+					Published:   published,
+					Category:    classifyItem(item, feedURL),
+				}
+			}
+		}(url)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	var items []FeedItem
+	for item := range resultChan {
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 
