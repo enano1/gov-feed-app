@@ -37,7 +37,7 @@ export default function Onboarding() {
 
           <input
             type="text"
-            placeholder={topics.length === 0 ? "e.g. Cybersecurity, AI" : ""}
+            placeholder={topics.length === 0 ? "e.g. Cybersecurity, Defense" : ""}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 const value = e.target.value.trim();
@@ -52,8 +52,19 @@ export default function Onboarding() {
           <span style={arrowStyle}>↵</span>
         </div>
 
-        <button onClick={handleSubmit} style={buttonStyle}>
-          Finish Setup →
+        <button
+        onClick={handleSubmit}
+        onMouseEnter={e => {
+            e.target.style.borderColor = '#9333ea';
+            e.target.style.boxShadow = '0 0 0 2px rgba(147, 51, 234, 0.5)';
+        }}
+        onMouseLeave={e => {
+            e.target.style.borderColor = '#333';
+            e.target.style.boxShadow = 'none';
+        }}
+        style={buttonStyle}
+        >
+        Finish Setup →
         </button>
       </div>
     </div>
@@ -86,18 +97,18 @@ const titleStyle = {
 };
 
 const inputContainerStyle = {
-  position: 'relative',
-  width: '100%',
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  backgroundColor: '#1a1a1a',
-  border: '1px solid #444',
-  borderRadius: '4px',
-  padding: '4px',
-  minHeight: '32px',
-};
-
+    width: '100%',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    border: '1px solid #333',
+    borderRadius: '9999px',
+    padding: '8px 12px',
+    minHeight: '48px',
+    transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+  };
+  
 const chipStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -106,8 +117,8 @@ const chipStyle = {
   padding: '3px 8px',
   borderRadius: '4px',
   fontSize: '0.8rem',
-  marginRight: '6px',
-  marginBottom: '4px'
+  padding: '10px 12px',
+  borderRadius: '9999px',
 };
 
 const chipButtonStyle = {
@@ -118,20 +129,21 @@ const chipButtonStyle = {
   cursor: 'pointer',
   fontWeight: 'bold',
   fontSize: '1rem',
+  marginRight: '6px',
   padding: 0,
 };
 
 const inputStyle = {
-  flex: 1,
-  minWidth: '120px',
-  border: 'none',
-  outline: 'none',
-  fontSize: '1rem',
-  color: '#fff',
-  backgroundColor: 'transparent',
-  padding: '6px 0',
-};
-
+    flex: 1,
+    minWidth: '120px',
+    border: 'none',
+    outline: 'none',
+    fontSize: '1rem',
+    color: '#fff',
+    backgroundColor: 'transparent',
+    padding: '6px 0',
+  };
+  
 const arrowStyle = {
   position: 'absolute',
   right: '12px',
@@ -143,12 +155,14 @@ const arrowStyle = {
 };
 
 const buttonStyle = {
-  marginTop: '2rem',
-  padding: '12px 24px',
-  fontSize: '1rem',
-  borderRadius: '9999px', // Very round
-  backgroundColor: '#6c5ce7', // Purple button
-  color: 'white',
-  border: 'none',
-  cursor: 'pointer',
-};
+    marginTop: '2rem',
+    padding: '12px 24px',
+    fontSize: '1rem',
+    borderRadius: '9999px',
+    backgroundColor: '#111',
+    color: 'white',
+    border: '1px solid #333',
+    cursor: 'pointer',
+    transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+  };
+  

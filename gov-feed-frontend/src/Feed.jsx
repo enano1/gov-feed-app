@@ -83,14 +83,23 @@ export default function Feed() {
     const currentFilter = filterOverride || filter;
     setIsLoading(true);
     setHasSearched(true);
-
+  
     try {
+      // 🧠 Step 1: Fetch related terms using Datamuse API
+      const relatedRes = await fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(actualQuery)}&max=5`);
+      const relatedData = await relatedRes.json();
+      const relatedTerms = relatedData.map(item => item.word.toLowerCase());
+      const allQueries = [actualQuery.toLowerCase(), ...relatedTerms];
+  
+      // 🛰️ Step 2: Send the full query list as a comma-separated string
       const url = new URL('http://localhost:8080/feed');
-      if (actualQuery) url.searchParams.set("query", actualQuery);
+      url.searchParams.set("query", allQueries.join(','));
       if (currentFilter !== "all") url.searchParams.set("filter", currentFilter);
+  
       const res = await fetch(url.toString(), { credentials: 'include' });
       let items = await res.json();
-
+  
+      // ✨ Step 3: Boost relevance using boostedTopics
       if (boostedTopics.length > 0) {
         items.sort((a, b) => {
           const aScore = boostedTopics.some(topic => a.title.toLowerCase().includes(topic)) ? 1 : 0;
@@ -98,7 +107,7 @@ export default function Feed() {
           return bScore - aScore;
         });
       }
-
+  
       setFeedItems(items);
       setLastQuery(actualQuery);
       setQuery(actualQuery);
@@ -108,7 +117,7 @@ export default function Feed() {
       setIsLoading(false);
     }
   };
-
+  
   const submitFeedback = async (articleId, action) => {
     const current = feedback[articleId];
     const newAction = current === action ? null : action;
@@ -148,7 +157,7 @@ export default function Feed() {
     }
   };
 
-  const fallbackSuggestions = ["AI", "Defense", "Cybersecurity", "China", "Pentagon"];
+  const fallbackSuggestions = ["Artificial Intelligence", "Defense", "Cybersecurity", "China", "Pentagon"];
   const feedToShow = activeTab === 'saved' ? savedItems : feedItems;
   const filteredFeedItems = feedToShow.filter(item => {
     const userAction = feedback[item.link];
@@ -168,6 +177,7 @@ export default function Feed() {
   paddingTop: 50,
   paddingLeft: 500,
   paddingRight: 500,
+  paddingBottom: 50,
   backgroundColor: '#111',
   color: '#fff',
   fontFamily: 'Inter, sans-serif'
@@ -175,38 +185,159 @@ export default function Feed() {
 
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
   <h1 style={{ fontSize: '1.75rem' }}>GovTech Feed</h1>
-  <button style={{
+  <button
+  onClick={handleLogout}
+  style={{
     padding: '8px 18px',
-    backgroundColor: '#333',
+    backgroundColor: '#000',
     color: '#fff',
     border: '1px solid #444',
     borderRadius: '9999px',
-    cursor: 'pointer'
-  }} onClick={handleLogout}>Logout</button>
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+  }}
+  onMouseEnter={(e) => {
+    e.target.style.borderColor = '#dc2626';
+    e.target.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.5)';
+  }}
+  onMouseLeave={(e) => {
+    e.target.style.borderColor = '#444';
+    e.target.style.boxShadow = 'none';
+  }}
+>
+  Logout
+</button>
 </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
         <div>
-          <button onClick={() => setActiveTab('feed')} disabled={activeTab === 'feed' || isLoading}>Feed</button>
-          <button onClick={() => { setActiveTab('saved'); if (!hasLoadedSaved) fetchSavedItems(); }} disabled={activeTab === 'saved' || isLoading} style={{ marginLeft: 10 }}>Saved</button>
+        <button
+  onClick={() => setActiveTab('feed')}
+  disabled={activeTab === 'feed' || isLoading}
+  style={{
+    padding: '8px 16px',
+    borderRadius: '9999px',
+    backgroundColor: '#000',
+    color: '#fff',
+    border: activeTab === 'feed' ? '1px solid #7c3aed' : '1px solid #444',
+    boxShadow: activeTab === 'feed' ? '0 0 0 2px rgba(124, 58, 237, 0.5)' : 'none',
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    marginRight: '10px',
+    transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+  }}
+  onMouseEnter={(e) => {
+    if (activeTab !== 'feed') {
+      e.target.style.borderColor = '#7c3aed';
+      e.target.style.boxShadow = '0 0 0 2px rgba(124, 58, 237, 0.5)';
+    }
+  }}
+  onMouseLeave={(e) => {
+    if (activeTab !== 'feed') {
+      e.target.style.borderColor = '#444';
+      e.target.style.boxShadow = 'none';
+    }
+  }}
+>
+  Feed
+</button>
+
+<button
+  onClick={() => {
+    setActiveTab('saved');
+    if (!hasLoadedSaved) fetchSavedItems();
+  }}
+  disabled={activeTab === 'saved' || isLoading}
+  style={{
+    padding: '8px 16px',
+    borderRadius: '9999px',
+    backgroundColor: '#000',
+    color: '#fff',
+    border: activeTab === 'saved' ? '1px solid #7c3aed' : '1px solid #444',
+    boxShadow: activeTab === 'saved' ? '0 0 0 2px rgba(124, 58, 237, 0.5)' : 'none',
+    cursor: 'pointer',
+    fontSize: '0.95rem',
+    transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+  }}
+  onMouseEnter={(e) => {
+    if (activeTab !== 'saved') {
+      e.target.style.borderColor = '#7c3aed';
+      e.target.style.boxShadow = '0 0 0 2px rgba(124, 58, 237, 0.5)';
+    }
+  }}
+  onMouseLeave={(e) => {
+    if (activeTab !== 'saved') {
+      e.target.style.borderColor = '#444';
+      e.target.style.boxShadow = 'none';
+    }
+  }}
+>
+  Saved
+</button>
         </div>
 
         {activeTab === 'feed' && (
           <>
-            <select value={filter} onChange={e => setFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="like">Liked</option>
-              <option value="dislike">Disliked</option>
-              <option value="save">Starred</option>
+            <select
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            onMouseEnter={e => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.5)';
+            }}
+            onMouseLeave={e => {
+                e.target.style.borderColor = '#333';
+                e.target.style.boxShadow = 'none';
+            }}
+            style={{
+                marginLeft: 10,
+                borderRadius: '9999px',
+                textAlign: 'center',
+                padding: '6px 12px',
+                backgroundColor: '#000',
+                color: '#fff',
+                border: '1px solid #333',
+                transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+                cursor: 'pointer',
+            }}
+            >
+            <option value="all">All</option>
+            <option value="like">Liked</option>
+            <option value="dislike">Disliked</option>
+            <option value="save">Starred</option>
             </select>
-            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ marginLeft: 10 }}>
-              <option value="all">All Categories</option>
-              <option value="News">News</option>
-              <option value="Grant">Grant</option>
-              <option value="Gov Opportunity">Gov Opportunity</option>
-              <option value="Think Tank">Think Tank</option>
-              <option value="International">International</option>
-              <option value="Other">Other</option>
+
+            <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            onMouseEnter={e => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.5)';
+            }}
+            onMouseLeave={e => {
+                e.target.style.borderColor = '#333';
+                e.target.style.boxShadow = 'none';
+            }}
+            style={{
+                marginLeft: 10,
+                borderRadius: '9999px',
+                textAlign: 'center',
+                padding: '6px 12px',
+                backgroundColor: '#000',
+                color: '#fff',
+                border: '1px solid #333',
+                transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+                cursor: 'pointer',
+            }}
+            >
+            <option value="all">All Categories</option>
+            <option value="News">News</option>
+            <option value="Grant">Grant</option>
+            <option value="Gov Opportunity">Gov Opportunity</option>
+            <option value="Think Tank">Think Tank</option>
+            <option value="International">International</option>
+            <option value="Other">Other</option>
             </select>
           </>
         )}
@@ -323,12 +454,37 @@ export default function Feed() {
         <div style={{ marginTop: 30 }}>
           <p style={{ fontWeight: 'bold', marginBottom: 5 }}>Suggested Topics:</p>
           {fallbackSuggestions.map(tag => (
-            <button key={tag} disabled={isLoading} onClick={() => {
-              setFilter('all');
-              setActiveTab('feed');
-              setQuery(tag);
-              handleSearch(tag, 'all');
-            }} style={{ backgroundColor: '#000', color: '#fff', border: 'none', padding: '10px 20px', marginRight: '10px', borderRadius: '9999px', cursor: 'pointer', fontSize: '0.95rem' }}>{tag}</button>
+            <button
+            key={tag}
+            disabled={isLoading}
+            onClick={() => {
+                setFilter('all');
+                setActiveTab('feed');
+                setQuery(tag);
+                handleSearch(tag, 'all');
+            }}
+            style={{
+                backgroundColor: '#000',
+                color: '#fff',
+                border: '1px solid #444',
+                padding: '10px 20px',
+                marginRight: '10px',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+            }}
+            onMouseEnter={(e) => {
+                e.target.style.borderColor = '#7c3aed'; // Neon purple
+                e.target.style.boxShadow = '0 0 0 2px rgba(124, 58, 237, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+                e.target.style.borderColor = '#444';
+                e.target.style.boxShadow = 'none';
+            }}
+            >
+            {tag}
+            </button>
           ))}
         </div>
       </div>
