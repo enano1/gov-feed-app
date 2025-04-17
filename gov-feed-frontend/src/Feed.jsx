@@ -32,7 +32,12 @@ export default function Feed() {
   const [currentSummary, setCurrentSummary] = useState('');
   const [summaryCache, setSummaryCache] = useState({});
 
-  
+  const [hasContinued, setHasContinued] = useState(false);
+  const [showContinueOptions, setShowContinueOptions] = useState(false);
+
+  const [feedGenerated, setFeedGenerated] = useState(false);
+
+
 
   useEffect(() => {
     fetch('http://localhost:8080/me', { credentials: 'include' })
@@ -61,15 +66,22 @@ export default function Feed() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
-      if (nearBottom && visibleCount < feedItems.length) {
-        setVisibleCount(prev => prev + 10);
+      const nearBottom = window.innerHeight + window.scrollY
+                       >= document.body.offsetHeight - 300;
+  
+      if (!nearBottom) return;
+  
+      if (!hasContinued) {
+        setShowContinueOptions(true);
+      } else if (visibleCount < feedItems.length) {
+        setVisibleCount(v => v + 10);
       }
     };
+  
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [visibleCount, feedItems, savedItems, activeTab]);
-
+  }, [hasContinued, visibleCount, feedItems]);
+  
   const handleLogout = async () => {
     await fetch('http://localhost:8080/logout', { method: 'POST', credentials: 'include' });
     window.location.href = "/login";
@@ -157,6 +169,7 @@ export default function Feed() {
     }
   };
   
+  
   const submitFeedback = async (articleId, action) => {
     const current = feedback[articleId];
     const newAction = current === action ? null : action;
@@ -230,7 +243,24 @@ export default function Feed() {
   };
     
 
-  const fallbackSuggestions = ["Artificial Intelligence", "Defense", "Cybersecurity", "China", "Pentagon"];
+  const fallbackSuggestions = [
+    "Artificial Intelligence", "Defense", "Cybersecurity", "China", "Pentagon", 
+    "Army", "Navy", "Grants", "Funding", "Security", "Technology", "Military", "International"
+  ];
+  
+  const getRandomTopics = () => {
+    const shuffled = fallbackSuggestions.sort(() => 0.5 - Math.random());  // Shuffle the array
+    return shuffled.slice(0, 3);  // Pick top 3 random topics
+  };
+
+  const [randomTopics, setRandomTopics] = useState([]);
+
+  useEffect(() => {
+    // Set random topics when the component loads
+    setRandomTopics(getRandomTopics());
+  }, []);  // Empty dependency array ensures this runs only once when the component mounts
+
+
   const feedToShow = activeTab === 'saved' ? savedItems : feedItems;
   const filteredFeedItems = feedToShow.filter(item => {
     const userAction = feedback[item.link];
@@ -545,19 +575,68 @@ export default function Feed() {
                 ))}
                 </div>
             </div>
-            </div>
+            </div>  
         );
         })
     )}
 
+    {showContinueOptions && !hasContinued && (
+    <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+        <button onClick={() => setHasContinued(true)}>
+        Continue Scrolling
+        </button>
+        <button onClick={() => {
+        const topic = randomTopics[Math.floor(Math.random() * 3)]; // or open a picker
+        setHasContinued(false);
+        setVisibleCount(10);
+        setShowContinueOptions(false);
+        handleSearch(topic);
+        }}>
+        Try a Suggested Topic
+        </button>
+    </div>
+    )}
 
         {!isLoading && hasSearched && query === lastQuery && filteredFeedItems.length === 0 && (
           <p style={{ fontStyle: 'italic', color: '#555', marginTop: 20 }}>No results found for "{query}". Try a different topic below.</p>
         )}
 
+        {!feedGenerated && (
+          <button
+            onClick={() => {
+              handleSearch(boostedTopics[0]);
+              setFeedGenerated(true);
+            }}
+            style={{
+                display: 'block',
+                margin: '100px auto',
+                backgroundColor: '#000',
+                color: '#fff',
+                border: '1px solid #444',
+                padding: '50px 50px',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                animation: 'pulse-glow 2s infinite',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.borderColor = '#7c3aed';
+                e.target.style.boxShadow = '0 0 15px rgba(124, 58, 237, 0.6)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.borderColor = '#444';
+                e.target.style.boxShadow = 'none';
+                e.target.style.transform = 'scale(1)';
+              }}          >
+            Generate Feed
+          </button>
+        )}
+
         <div style={{ marginTop: 30 }}>
-          <p style={{ fontWeight: 'bold', marginBottom: 5 }}>Suggested Topics:</p>
-          {fallbackSuggestions.map(tag => (
+          <h1 style={{ fontSize: '1.75rem' }}>Suggested Topics:</h1>
+          {randomTopics.map(tag => (
             <button
             key={tag}
             disabled={isLoading}
@@ -595,9 +674,9 @@ export default function Feed() {
             onClose={() => setSummaryModalOpen(false)}
             content={currentSummary}
             />
-
         </div>
       </div>
     </div>
+    
   );
 }

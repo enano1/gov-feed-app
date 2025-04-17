@@ -1,30 +1,46 @@
 // src/Landing.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import FloatingChipsBackground from './FloatingChipsBackground';
+
 
 export default function Landing() {
   const navigate = useNavigate();
 
   return (
     <div style={{
-      backgroundColor: '#111',
-      color: 'white',
-      height: '100vh',
-      width: '100vw',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      textAlign: 'center',
-    //   padding: '2rem',
-      overflow: 'hidden'
-    }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
-        Stay ahead in defense + gov tech.
-      </h1>
-      <p style={{ marginBottom: '2rem', fontSize: '1.2rem', maxWidth: '500px' }}>
-        Get real-time updates on military innovation, cybersecurity, government opportunities, and more.
-      </p>
+        backgroundColor: '#111',
+        color: 'white',
+        height: '100vh',
+        width: '100vw',
+        position: 'relative', // <-- Important
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        textAlign: 'center',
+        overflow: 'hidden'
+      }}>
+      <FloatingChipsBackground />
+
+      <div
+  style={{
+    backgroundColor: 'rgba(17, 17, 17, 0.6)', // semi-transparent dark background
+    backdropFilter: 'blur(8px)',              // this blurs the background behind it
+    WebkitBackdropFilter: 'blur(8px)',        // Safari support
+    borderRadius: '1rem',
+    padding: '2rem 3rem',
+    zIndex: 2,                                // ensure it’s above the background
+    position: 'relative',                     // necessary for stacking
+    boxShadow: '0 0 30px rgba(0,0,0,0.2)'      // subtle depth
+  }}
+>
+  <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
+    Stay ahead in defense + gov tech.
+  </h1>
+  <p style={{ marginBottom: '2rem', fontSize: '1.2rem', maxWidth: '500px', margin: '0 auto' }}>
+    Get updates on military innovation, cybersecurity, government opportunities, and more.
+  </p>
       <button
         onClick={() => navigate('/login')}
         onMouseEnter={e => {
@@ -49,6 +65,7 @@ export default function Landing() {
         Get Started
         </button>
     </div>
+</div>
   );
 }
 

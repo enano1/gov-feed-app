@@ -46,3 +46,15 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0px rgba(124, 58, 237, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(124, 58, 237, 0.3);
+  }
+}
