@@ -278,8 +278,8 @@ export default function Feed() {
   overflowX: 'hidden',
   boxSizing: 'border-box',
   paddingTop: 50,
-  paddingLeft: 500,
-  paddingRight: 500,
+  paddingLeft: 'calc(50vw - 350px)',
+  paddingRight: 'calc(50vw - 350px)',
   paddingBottom: 50,
   backgroundColor: '#111',
   color: '#fff',
@@ -604,7 +604,9 @@ export default function Feed() {
         {!feedGenerated && (
           <button
             onClick={() => {
-              handleSearch(boostedTopics[0]);
+              const top5Topics = boostedTopics.slice(0, 5);
+              const randomTopic = top5Topics[Math.floor(Math.random() * top5Topics.length)];
+              handleSearch(randomTopic);
               setFeedGenerated(true);
             }}
             style={{
