@@ -110,66 +110,71 @@ export default function Feed() {
     if (isLoading) return;
     const actualQuery = customQuery || query;
     const currentFilter = filterOverride || filter;
+  
     setIsLoading(true);
     setHasSearched(true);
+    setHasContinued(false);            // ✅ Reset scroll state
+    setShowContinueOptions(false);     // ✅ Reset suggestion UI
   
     try {
-      // 🧠 Step 1: Fetch related terms using Datamuse API
+      // Step 1: Fetch related terms
       const relatedRes = await fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(actualQuery)}&max=5`);
       const relatedData = await relatedRes.json();
       const relatedTerms = relatedData.map(item => item.word.toLowerCase());
       const allQueries = [actualQuery.toLowerCase(), ...relatedTerms];
   
-      // 🛰️ Step 2: Send the full query list as a comma-separated string
-      const url = new URL('http://localhost:8080/feed');
-      url.searchParams.set("query", allQueries.join(','));
-      if (currentFilter !== "all") url.searchParams.set("filter", currentFilter);
+      setRandomTopics(relatedTerms.slice(0, 3)); // Save fallback suggestions
   
-      const res = await fetch(url.toString(), { credentials: 'include' });
-      let items = await res.json();
+      // Step 2: Fetch from /feed
+      const feedURL = new URL('http://localhost:8080/feed');
+      feedURL.searchParams.set("query", allQueries.join(','));
+      if (currentFilter !== "all") feedURL.searchParams.set("filter", currentFilter);
   
-      // ✨ Step 3: Boost relevance using boostedTopics
+      const feedRes = await fetch(feedURL.toString(), { credentials: 'include' });
+      const feedData = await feedRes.json();
+  
+      // Step 3: Fetch from /federal
+      const federalURL = new URL('http://localhost:8080/federal');
+      federalURL.searchParams.set("query", actualQuery);
+  
+      const federalRes = await fetch(federalURL.toString());
+      const federalData = await federalRes.json();
+  
+      // Step 4: Merge both sources
+      let combinedItems = [...feedData, ...federalData];
+  
+      // Optional: boost sorting using your boostedTopics logic
       if (boostedTopics.length > 0) {
         const boosted = [];
         const regular = [];
-      
-        for (const item of items) {
-          const isBoosted = boostedTopics.some(topic =>
-            item.title.toLowerCase().includes(topic)
-          );
-          if (isBoosted) {
-            boosted.push(item);
-          } else {
-            regular.push(item);
-          }
+  
+        for (const item of combinedItems) {
+          const isBoosted = boostedTopics.some(topic => item.title?.toLowerCase().includes(topic));
+          if (isBoosted) boosted.push(item);
+          else regular.push(item);
         }
-      
-        // Interleave: one boosted item every 5 regular items
+  
         const interleaved = [];
         let r = 0, b = 0;
-      
         while (r < regular.length || b < boosted.length) {
-          for (let i = 0; i < 5 && r < regular.length; i++) {
-            interleaved.push(regular[r++]);
-          }
-          if (b < boosted.length) {
-            interleaved.push(boosted[b++]);
-          }
+          for (let i = 0; i < 5 && r < regular.length; i++) interleaved.push(regular[r++]);
+          if (b < boosted.length) interleaved.push(boosted[b++]);
         }
-      
-        items = interleaved;
+  
+        combinedItems = interleaved;
       }
-        
-      setFeedItems(items);
+  
+      setFeedItems(combinedItems);
       setLastQuery(actualQuery);
       setQuery(actualQuery);
-    } catch (error) {
-      console.error("Error fetching feed:", error);
+    } catch (err) {
+      console.error("Error fetching combined feed:", err);
     } finally {
       setIsLoading(false);
     }
   };
   
+      
   
   const submitFeedback = async (articleId, action) => {
     const current = feedback[articleId];
@@ -602,11 +607,12 @@ export default function Feed() {
     )}
 
     {showContinueOptions && !hasContinued && (
-    <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+    <div style={{ textAlign: 'center', margin: '2rem 0', padding: '0.5rem' }}>
         <button onClick={() => setHasContinued(true)}>
         Continue Scrolling
         </button>
-        <button onClick={() => {
+
+        <button style={{ marginLeft: '1rem' }} onClick={() => {
         const topic = randomTopics[Math.floor(Math.random() * 3)]; // or open a picker
         setHasContinued(false);
         setVisibleCount(10);
@@ -689,8 +695,8 @@ export default function Feed() {
                 e.target.style.boxShadow = 'none';
             }}
             >
-            {tag}
-            </button>
+        {tag.charAt(0).toUpperCase() + tag.slice(1)}
+        </button>
           ))}
           <SummaryModal
             isOpen={summaryModalOpen}

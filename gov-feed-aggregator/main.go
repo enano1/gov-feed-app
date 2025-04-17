@@ -157,11 +157,23 @@ func main() {
 	router.GET("/user-topics", auth.RequireLogin(), auth.GetUserTopics)
 	router.POST("/onboarding", auth.OnboardingHandler)
 	router.POST("/summarize", auth.SummarizeHandler)
-	// router.POST("/query-expand", auth.QueryExpansionHandler)
+	
 
+	router.GET("/federal", func(c *gin.Context) {
+		query := c.Query("query")
+		if query == "" {
+			c.JSON(400, gin.H{"error": "Query required"})
+			return
+		}
 
+		results, err := feeds.FetchFederalDocs(query)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 
-
+		c.JSON(200, results)
+	})
 
 	router.GET("/debug/session", func(c *gin.Context) {
 		session := sessions.Default(c)
