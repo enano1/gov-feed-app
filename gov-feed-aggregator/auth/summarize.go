@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -16,7 +17,7 @@ import (
 type SummarizeRequest struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
-	Link    string `json:"link"` // Add this so we can uniquely identify the article
+	Link    string `json:"link"`
 }
 
 type Message struct {
@@ -72,15 +73,21 @@ func SummarizeHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Create prompt
-	prompt := "Summarize the following article titled \"" + req.Title + "\" in 3 bullet points:\n\n" + req.Content
+	// 2. Clean and truncate content for context window
+	cleanContent := strings.TrimSpace(req.Content)
+	if len(cleanContent) > 1500 {
+		cleanContent = cleanContent[:1500]
+	}
+
+	// 3. Create prompt
+	prompt := "Summarize the article titled '" + req.Title + "' in 3 concise, neutral, and informative bullet points. Only use the content provided.\n\n" + cleanContent
 
 	openAIReq := OpenAIRequest{
 		Model: "gpt-3.5-turbo",
 		Messages: []Message{
 			{Role: "user", Content: prompt},
 		},
-		MaxTokens: 150,
+		MaxTokens: 200,
 	}
 
 	buf := new(bytes.Buffer)
@@ -109,7 +116,7 @@ func SummarizeHandler(c *gin.Context) {
 
 	summary := aiResp.Choices[0].Message.Content
 
-	// 3. Save to DB
+	// 4. Save to DB
 	_, _ = DB.Exec(`INSERT INTO summaries (article_link, summary, created_at)
 					VALUES ($1, $2, $3)
 					ON CONFLICT (article_link) DO NOTHING`,

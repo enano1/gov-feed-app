@@ -37,6 +37,7 @@ export default function Feed() {
 
   const [feedGenerated, setFeedGenerated] = useState(false);
 
+  const [sortMode, setSortMode] = useState('newest'); 
 
 
   useEffect(() => {
@@ -261,12 +262,23 @@ export default function Feed() {
   }, []);  // Empty dependency array ensures this runs only once when the component mounts
 
 
+// …inside Feed():
+
+  // before your return(…)…
   const feedToShow = activeTab === 'saved' ? savedItems : feedItems;
   const filteredFeedItems = feedToShow.filter(item => {
-    const userAction = feedback[item.link];
+    const userAction = feedback[item.link]; 
     const matchesReaction = filter === 'all' || userAction === filter;
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return (activeTab === 'saved' ? userAction === 'save' : true) && matchesReaction && matchesCategory;
+
+    if (activeTab === 'saved') {
+      // only show saved/starred items
+      return userAction === 'save' && matchesReaction && matchesCategory;
+    } else {
+      // feed tab: exclude anything hidden
+      if (userAction === 'hide') return false;
+      return matchesReaction && matchesCategory;
+    }
   });
 
   return (
@@ -287,7 +299,12 @@ export default function Feed() {
 }}>
 
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-  <h1 style={{ fontSize: '1.75rem' }}>GovTech Feed</h1>
+  <h1
+    style={{ fontSize: '1.75rem', cursor: 'pointer' }}
+    onClick={() => window.location.reload()}
+  >
+    GovTech Feed
+  </h1>
   <button
   onClick={handleLogout}
   style={{
@@ -479,18 +496,18 @@ export default function Feed() {
             backgroundColor: '#1a1a1a',
             color: 'white',
             padding: '8px 16px',
-            border: '1px solid #2563eb',
+            border: '1px solid #7c3aed',
             borderRadius: '8px',
             fontSize: '0.95rem',
             cursor: 'pointer',
             transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
         }}
         onMouseEnter={(e) => {
-            e.target.style.borderColor = '#22c55e'; // neon green
-            e.target.style.boxShadow = '0 0 0 2px rgba(34, 197, 94, 0.5)';
+            e.target.style.borderColor = '#7c3aed'; // neon purple
+            e.target.style.boxShadow = '0 0 15px rgba(124, 58, 237, 0.6)';
         }}
         onMouseLeave={(e) => {
-            e.target.style.borderColor = '#2563eb';
+            e.target.style.borderColor = '#7c3aed';
             e.target.style.boxShadow = 'none';
         }}
         >
@@ -502,9 +519,13 @@ export default function Feed() {
         {isLoading ? (
             <LoadingBadge />
         ) : (
-        filteredFeedItems.slice(0, visibleCount).map((item, idx) => {        
+            
+            
+        [...filteredFeedItems]
+        .sort((a, b) => new Date(b.published) - new Date(a.published)) // Newest first
+        .slice(0, visibleCount)
+        .map((item, idx) => {
         const imgSrc = extractImageSrc(item.description);
-        // Determine if the article is boosted by checking if the title includes any boosted topic.
         const isBoosted = boostedTopics.some(topic =>
             item.title.toLowerCase().includes(topic)
         );
@@ -601,7 +622,7 @@ export default function Feed() {
           <p style={{ fontStyle: 'italic', color: '#555', marginTop: 20 }}>No results found for "{query}". Try a different topic below.</p>
         )}
 
-        {!feedGenerated && (
+        {!feedGenerated && !hasSearched && (
           <button
             onClick={() => {
               const top5Topics = boostedTopics.slice(0, 5);

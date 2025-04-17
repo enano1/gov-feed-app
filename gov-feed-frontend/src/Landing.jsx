@@ -52,6 +52,7 @@ export default function Landing() {
             e.target.style.boxShadow = 'none';
         }}
         style={{
+            marginTop: '1rem',
             padding: '12px 24px',
             fontSize: '1rem',
             borderRadius: '9999px',

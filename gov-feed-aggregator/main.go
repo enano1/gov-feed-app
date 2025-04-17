@@ -157,6 +157,8 @@ func main() {
 	router.GET("/user-topics", auth.RequireLogin(), auth.GetUserTopics)
 	router.POST("/onboarding", auth.OnboardingHandler)
 	router.POST("/summarize", auth.SummarizeHandler)
+	// router.POST("/query-expand", auth.QueryExpansionHandler)
+
 
 
 

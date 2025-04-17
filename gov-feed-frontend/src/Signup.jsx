@@ -69,7 +69,8 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '1rem',
+    // padding: '1rem',
+    overflow: 'hidden',
   },
   input: {
     width: '250px',

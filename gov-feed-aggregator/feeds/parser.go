@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"sort"
+	"regexp"
 
 	"github.com/mmcdole/gofeed"
 	"gov-feed-aggregator/auth"
@@ -89,7 +90,7 @@ var sources = []string{
 
 	// Tech
 	"http://feeds.feedburner.com/TechCrunch/",
-	"https://www.wired.com/feed/rss",
+	// "https://www.wired.com/feed/rss",
 }
 
 /* ───────────────── IN‑MEMORY CACHE ───────────────────────── */
@@ -99,7 +100,7 @@ var (
 	sourceCacheTimes = make(map[string]time.Time)
 	cacheTTL         = 5 * time.Minute
 	cacheMu          sync.Mutex
-)
+) 
 
 /* ───────────────── PUBLIC WRAPPERS ───────────────────────── */
 
@@ -138,61 +139,69 @@ func fetchRelatedTerms(query string) ([]string, error) {
     return terms, nil
 }
 
-func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, error) {
+func fetchAndFilterFeeds(query string, _ bool) ([]FeedItem, error) {
+
+	/* 0. Empty → everything */
 	if strings.TrimSpace(query) == "" {
-		// Special case: allow "empty query" to fetch everything
 		return fetchEverythingFromSources()
 	}
 
-	var wg sync.WaitGroup
-	type ScoredItem struct {
-		Item  FeedItem
-		Score int
-	}
-	resultChan := make(chan ScoredItem, 1000)
-	fp := gofeed.NewParser()
+	start      := time.Now()
+	fp         := gofeed.NewParser()
+	lq         := strings.ToLower(strings.TrimSpace(query))
 
-	// Support comma-separated terms
-	rawTerms := strings.Split(query, ",")
-	var expandedTerms []string
-	for _, term := range rawTerms {
-		term = strings.TrimSpace(term)
-		if term != "" {
-			expandedTerms = append(expandedTerms, strings.ToLower(term))
+	// --- decide mode ----------------------------------------------------
+	useOR := strings.Contains(lq, ",") // ← comma means “alternatives”
+
+	// --- build the list of search terms ---------------------------------
+	lq = strings.ReplaceAll(lq, ",", " ")
+	rawTerms := strings.Fields(lq)
+
+	terms := []string{}
+	for _, t := range rawTerms {
+		if t != "" {
+			terms = append(terms, t)
 		}
 	}
-
-	if len(expandedTerms) == 0 {
-		fmt.Println("⚠️ No search terms provided")
+	if len(terms) == 0 {
+		fmt.Println("⚠️  no terms after normalising query")
 		return nil, nil
 	}
 
-	seen := make(map[string]bool)
-	var seenMu sync.Mutex
-	start := time.Now()
+	// pre‑compile boundary regexes
+	termRegex := make([]*regexp.Regexp, len(terms))
+	for i, t := range terms {
+		termRegex[i] = regexp.MustCompile(`\b` + regexp.QuoteMeta(t) + `\b`)
+	}
+	exactPhrase := regexp.MustCompile(`\b` + regexp.QuoteMeta(strings.Join(terms, " ")) + `\b`)
 
-	for _, url := range sources {
+	// ---------- rest identical to previous version ----------------------
+	type scored struct {
+		Item  FeedItem
+		Score int
+	}
+	resCh := make(chan scored, 1000)
+	var wg sync.WaitGroup
+	seen  := map[string]bool{}
+	var mu sync.Mutex
+
+	for _, feedURL := range sources {
 		wg.Add(1)
 		go func(feedURL string) {
 			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					fmt.Printf("⚠️ Recovered from panic in %s: %v\n", feedURL, r)
-				}
-			}()
 
+			/* cache‑aware fetch */
 			var items []*gofeed.Item
 			cacheMu.Lock()
-			cachedItems, cached := sourceCache[feedURL]
-			cacheTime := sourceCacheTimes[feedURL]
+			if it, ok := sourceCache[feedURL]; ok && time.Since(sourceCacheTimes[feedURL]) < cacheTTL {
+				items = it
+			}
 			cacheMu.Unlock()
 
-			if cached && time.Since(cacheTime) < cacheTTL {
-				items = cachedItems
-			} else {
+			if items == nil {
 				feed, err := fp.ParseURL(feedURL)
 				if err != nil {
-					fmt.Printf("❌ Failed to connect: %s\n", feedURL)
+					fmt.Printf("❌ fetch failed: %s: %v\n", feedURL, err)
 					return
 				}
 				items = feed.Items
@@ -202,82 +211,89 @@ func fetchAndFilterFeeds(query string, searchDescriptions bool) ([]FeedItem, err
 				cacheMu.Unlock()
 			}
 
-			for _, item := range items {
-				title := strings.ToLower(item.Title)
-				desc := strings.ToLower(item.Description)
-				content := strings.ToLower(item.Content)
+			/* score / filter */
+			for _, it := range items {
+				title := strings.ToLower(it.Title)
 
-				score := 0
-				for _, term := range expandedTerms {
-					if strings.Contains(title, term) {
-						score += 5 // Title match = strong
+				keep := false
+				if useOR {
+					/* OR mode: keep if **any** term matches */
+					for _, re := range termRegex {
+						if re.MatchString(title) {
+							keep = true
+							break
+						}
 					}
-					if searchDescriptions && (strings.Contains(desc, term) || strings.Contains(content, term)) {
-						score += 2 // Content match = weaker
+				} else {
+					/* AND mode: keep only if **all** terms match */
+					keep = true
+					for _, re := range termRegex {
+						if !re.MatchString(title) {
+							keep = false
+							break
+						}
 					}
 				}
-				if score == 0 {
+				if !keep {
 					continue
 				}
 
-				seenMu.Lock()
-				if seen[item.Link] {
-					seenMu.Unlock()
-					continue
+				/* basic scoring */
+				score := 5                                            // baseline
+				if exactPhrase.MatchString(title) { score += 40 }     // full phrase
+				score += 10 * len(title) / 1000                       // harmless tie‑breaker
+
+				/* recency bump */
+				var pub time.Time
+				if it.PublishedParsed != nil {
+					pub = *it.PublishedParsed
+					if hrs := time.Since(pub).Hours(); hrs <= 24 {
+						score += 5
+					} else if hrs <= 72 {
+						score += 2
+					}
 				}
-				seen[item.Link] = true
-				seenMu.Unlock()
 
-				var published time.Time
-				if item.PublishedParsed != nil {
-					published = *item.PublishedParsed
-				}
+				/* dedupe */
+				mu.Lock()
+				if seen[it.Link] { mu.Unlock(); continue }
+				seen[it.Link] = true
+				mu.Unlock()
 
-				go func(link, title string) {
-					auth.DB.Exec(
-						`INSERT INTO articles (link, title) VALUES ($1,$2) ON CONFLICT (link) DO NOTHING`,
-						link, title,
-					)
-				}(item.Link, item.Title)
+				/* async DB insert */
+				go func(l, t string) {
+					auth.DB.Exec(`INSERT INTO articles (link,title)
+					              VALUES ($1,$2) ON CONFLICT DO NOTHING`, l, t)
+				}(it.Link, it.Title)
 
-				resultChan <- ScoredItem{
+				resCh <- scored{
 					Item: FeedItem{
-						Title:       item.Title,
-						Link:        item.Link,
-						Description: item.Description,
-						Published:   published,
-						Category:    classifyItem(item, feedURL),
+						Title:       it.Title,
+						Link:        it.Link,
+						Description: it.Description,
+						Published:   pub,
+						Category:    classifyItem(it, feedURL),
 					},
 					Score: score,
 				}
 			}
-		}(url)
+		}(feedURL)
 	}
 
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
+	go func() { wg.Wait(); close(resCh) }()
 
-	var scoredItems []ScoredItem
-	for result := range resultChan {
-		scoredItems = append(scoredItems, result)
-	}
+	var all []scored
+	for s := range resCh { all = append(all, s) }
+	sort.Slice(all, func(i, j int) bool { return all[i].Score > all[j].Score })
 
-	sort.Slice(scoredItems, func(i, j int) bool {
-		return scoredItems[i].Score > scoredItems[j].Score
-	})
+	out := make([]FeedItem, len(all))
+	for i, s := range all { out[i] = s.Item }
 
-	results := make([]FeedItem, len(scoredItems))
-	for i, entry := range scoredItems {
-		results[i] = entry.Item
-	}
-
-	fmt.Printf("✅ Phase complete | DescSearch=%v | Feeds=%d | Results=%d | %v\n",
-		searchDescriptions, len(sources), len(results), time.Since(start))
-
-	return results, nil
+	fmt.Printf("✅ Search finished (%s) | %d results | %v\n",
+		query, len(out), time.Since(start))
+	return out, nil
 }
+
 
 
 func fetchEverythingFromSources() ([]FeedItem, error) {
