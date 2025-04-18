@@ -33,7 +33,19 @@ func SignupHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Signup successful"})
+	// 🔐 Log the user in after signup
+	userID, err := GetUserByEmailAndPassword(creds.Email, creds.Password)
+	if err != nil {
+		log.Printf("❌ Auto-login failed after signup: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Signup succeeded, but login failed"})
+		return
+	}
+
+	session := sessions.Default(c)
+	session.Set("user_id", userID)
+	session.Save()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Signup + login successful"})
 }
 
 func LoginHandler(c *gin.Context) {
