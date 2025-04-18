@@ -1,55 +1,32 @@
-# 🛰️ Gov Feed App
+# GovFeed App
 
-This is a full-stack application that aggregates defense and government-related news using RSS feeds. It includes:
+Full-stack RSS and API aggregator for defense & government news.
 
-- `gov-feed-aggregator/`: the Go backend (Gin + PostgreSQL)
-- `gov-feed-frontend/`: the React frontend (Vite + JSX)
+## Prerequisites
 
-## 📦 Prerequisites
-
-- Go (>= 1.18)
-- Node.js (>= 16)
-- PostgreSQL
+- Go ≥ 1.18  
+- Node.js ≥ 16  
+- PostgreSQL  
 - Git
 
-## 🛠️ Setup Instructions
+## 🚀 How to Run
 
-### 1. Clone the repository
-
-git clone https://github.com/your-username/gov-feed-app.git  
+```bash
+# 1. Clone the repo
+git clone https://github.com/your-username/gov-feed-app.git
 cd gov-feed-app
 
-### 2. Backend Setup (`gov-feed-aggregator`)
-
+# 2. Set up backend
 cd gov-feed-aggregator
 
-Create a `.env` file in this folder with:
-
-DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<dbname>  
-
-Install dependencies:
+# Create a .env file with:
+# DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<dbname>
+# OPENAI_API_KEY=your_openai_key
 
 go mod tidy
-
-Run backend:
-
 go run main.go
 
-### 3. Frontend Setup (`gov-feed-frontend`)
-
-Install dependencies:
-
+# 3. Set up frontend (in a new terminal)
+cd gov-feed-frontend
 npm install
-
-Run frontend:
-
 npm run dev
-
-
-## 📬 Feedback & Contributions
-
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
-
-## 🔐 License
-
-MIT
