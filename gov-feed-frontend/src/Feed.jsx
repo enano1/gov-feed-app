@@ -37,7 +37,8 @@ export default function Feed() {
 
   const [feedGenerated, setFeedGenerated] = useState(false);
 
-  const [sortMode, setSortMode] = useState('newest'); 
+  const [subQuery, setSubQuery] = useState('');
+
 
 
   useEffect(() => {
@@ -108,48 +109,59 @@ export default function Feed() {
     
   const handleSearch = async (customQuery = "", filterOverride = null) => {
     if (isLoading) return;
+  
     const actualQuery = customQuery || query;
     const currentFilter = filterOverride || filter;
   
     setIsLoading(true);
     setHasSearched(true);
-    setHasContinued(false);            // ✅ Reset scroll state
-    setShowContinueOptions(false);     // ✅ Reset suggestion UI
+    setHasContinued(false);
+    setShowContinueOptions(false);
   
     try {
-      // Step 1: Fetch related terms
       const relatedRes = await fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(actualQuery)}&max=5`);
       const relatedData = await relatedRes.json();
       const relatedTerms = relatedData.map(item => item.word.toLowerCase());
       const allQueries = [actualQuery.toLowerCase(), ...relatedTerms];
   
-      setRandomTopics(relatedTerms.slice(0, 3)); // Save fallback suggestions
+      setRandomTopics(relatedTerms.slice(0, 3));
   
-      // Step 2: Fetch from /feed
+      // 📰 Fetch from /feed
       const feedURL = new URL('http://localhost:8080/feed');
       feedURL.searchParams.set("query", allQueries.join(','));
       if (currentFilter !== "all") feedURL.searchParams.set("filter", currentFilter);
-  
       const feedRes = await fetch(feedURL.toString(), { credentials: 'include' });
       const feedData = await feedRes.json();
   
-      // Step 3: Fetch from /federal
-      const federalURL = new URL('http://localhost:8080/federal');
-      federalURL.searchParams.set("query", actualQuery);
+      // 🏛 Fetch from /federal (just use main query to avoid 500s)
+      let federalData = [];
+      if (!actualQuery.includes(" ") && !actualQuery.includes(",")) {
+        const federalURL = new URL('http://localhost:8080/federal');
+        federalURL.searchParams.set("query", actualQuery);
+        const federalRes = await fetch(federalURL.toString());
+        federalData = await federalRes.json();
+      }
   
-      const federalRes = await fetch(federalURL.toString());
-      const federalData = await federalRes.json();
-  
-      // Step 4: Merge both sources
       let combinedItems = [...feedData, ...federalData];
   
-      // Optional: boost sorting using your boostedTopics logic
+      // 🔍 Subquery refinement (local filtering)
+      const sub = subQuery.trim().toLowerCase();
+      if (sub) {
+        combinedItems = combinedItems.filter(item =>
+          item.title?.toLowerCase().includes(sub) ||
+          item.description?.toLowerCase().includes(sub)
+        );
+      }
+  
+      // ✨ Boost sorting
       if (boostedTopics.length > 0) {
         const boosted = [];
         const regular = [];
   
         for (const item of combinedItems) {
-          const isBoosted = boostedTopics.some(topic => item.title?.toLowerCase().includes(topic));
+          const isBoosted = boostedTopics.some(topic =>
+            item.title?.toLowerCase().includes(topic)
+          );
           if (isBoosted) boosted.push(item);
           else regular.push(item);
         }
@@ -173,7 +185,7 @@ export default function Feed() {
       setIsLoading(false);
     }
   };
-  
+    
       
   
   const submitFeedback = async (articleId, action) => {
@@ -308,7 +320,7 @@ export default function Feed() {
     style={{ fontSize: '1.75rem', cursor: 'pointer' }}
     onClick={() => window.location.reload()}
   >
-    GovTech Feed
+    GovFeed
   </h1>
   <button
   onClick={handleLogout}
@@ -409,11 +421,11 @@ export default function Feed() {
             value={filter}
             onChange={e => setFilter(e.target.value)}
             onMouseEnter={e => {
-                e.target.style.borderColor = '#2563eb';
-                e.target.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.5)';
-            }}
+                e.target.style.borderColor = '#7c3aed';
+                e.target.style.boxShadow = '0 0 0 2px rgba(124, 58, 237, 0.5)';
+                      }}
             onMouseLeave={e => {
-                e.target.style.borderColor = '#333';
+                e.target.style.borderColor = '#444';
                 e.target.style.boxShadow = 'none';
             }}
             style={{
@@ -433,41 +445,30 @@ export default function Feed() {
             <option value="dislike">Disliked</option>
             <option value="save">Starred</option>
             </select>
-
-            <select
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
-            onMouseEnter={e => {
-                e.target.style.borderColor = '#2563eb';
-                e.target.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.5)';
-            }}
-            onMouseLeave={e => {
-                e.target.style.borderColor = '#333';
-                e.target.style.boxShadow = 'none';
-            }}
-            style={{
-                marginLeft: 10,
-                borderRadius: '9999px',
-                textAlign: 'center',
-                padding: '6px 12px',
-                backgroundColor: '#000',
-                color: '#fff',
-                border: '1px solid #333',
-                transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
-                cursor: 'pointer',
-            }}
-            >
-            <option value="all">All Categories</option>
-            <option value="News">News</option>
-            <option value="Grant">Grant</option>
-            <option value="Gov Opportunity">Gov Opportunity</option>
-            <option value="Think Tank">Think Tank</option>
-            <option value="International">International</option>
-            <option value="Other">Other</option>
-            </select>
           </>
         )}
+        <input
+  type="text"
+  placeholder="Refine your search (e.g. contracts, date, meeting, etc.)"
+  value={subQuery}
+  onChange={e => setSubQuery(e.target.value)}
+  style={{
+    marginLeft: 10,
+    borderRadius: '9999px',
+    textAlign: 'left',
+    padding: '6px 12px',
+    backgroundColor: '#000',
+    color: '#fff',
+    border: '1px solid #333',
+    transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+    cursor: 'text',
+    flexGrow: 1,
+    minWidth: '250px'
+  }}
+/>
+
       </div>
+      
 
       <div style={{
         display: 'flex',

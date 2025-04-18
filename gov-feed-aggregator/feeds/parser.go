@@ -34,7 +34,7 @@ var sources = []string{
 	"https://www.army.mil/rss/static/85.xml",
 	"https://www.rand.org/topics/national-security.xml",
 	"https://www.af.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1",
-	"https://www.popularmechanics.com/rss/all.xml",
+	// "https://www.popularmechanics.com/rss/all.xml",
 	"https://www.defenceiq.com/rss/categories/air-forces-military-aircraft",
 	"https://www.defenceiq.com/rss/categories/armoured-vehicles",
 	"https://www.defenceiq.com/rss/categories/air-land-and-sea-defence-services",
@@ -47,7 +47,7 @@ var sources = []string{
 	"https://www.army-technology.com/feed/",
 	"https://www.airforce-technology.com/feed/",
 	"https://www.naval-technology.com/news/feed/",
-	"https://feeds.feedburner.com/defense-technology",
+	// "https://feeds.feedburner.com/defense-technology",
 	"https://sociable.co/military-technology/feed/",
 	"https://www.defenseone.com/rss/technology/",
 	"https://defense-update.com/feed",
@@ -76,21 +76,23 @@ var sources = []string{
 	"https://www.gov.uk/government/organisations/ministry-of-defence.atom",
 	"https://natowatch.org/news.xml",
 	"https://ukdefencejournal.org.uk/feed/",
-	"https://bulgarianmilitary.com/feed/",
+	// "https://bulgarianmilitary.com/feed/",
 	"https://russiandefpolicy.com/feed/",
 
 	// US‑based news
-	"https://feeds.npr.org/1001/rss.xml",
-	"https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-	"https://feeds.washingtonpost.com/rss/national",
+	// "https://feeds.npr.org/1001/rss.xml",
+	// "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+	// "https://feeds.washingtonpost.com/rss/national",
 
 	// International news
-	"https://feeds.bbci.co.uk/news/world/rss.xml",
-	"https://www.aljazeera.com/xml/rss/all.xml",
+	// "https://feeds.bbci.co.uk/news/world/rss.xml",
+	// "https://www.aljazeera.com/xml/rss/all.xml",
 
 	// Tech
-	"http://feeds.feedburner.com/TechCrunch/",
+	// "http://feeds.feedburner.com/TechCrunch/",
 	// "https://www.wired.com/feed/rss",
+	"https://www.nsf.gov/rss/rss_www_funding_pgm_annc_inf.xml",
+
 }
 
 /* ───────────────── IN‑MEMORY CACHE ───────────────────────── */
