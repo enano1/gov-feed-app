@@ -10,7 +10,12 @@ Full-stack RSS and API aggregator for defense & government news.
 - Git
 
 ## 🚀 How to Run
+Create your .env in gov-feed-aggregator
+```bash
 
+DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<dbname>
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
 ```bash
 # 1. Clone the repo
 git clone https://github.com/your-username/gov-feed-app.git
